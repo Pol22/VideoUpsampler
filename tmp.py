@@ -1,58 +1,148 @@
-import tensorflow as tf
-# import tensorflow_addons as tfa
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 from PIL import Image
 import numpy as np
+import tensorflow as tf
 
-
-img = Image.open('frames/95.png')
+# img = Image.open('tmp_img.png')
+img = Image.open('a2345-_DSC0114_0.png')
+# img = Image.open('a2972-_DSC6416_0.png')
 img = np.asarray(img, dtype=np.float32)
 
-shape = tf.shape(img)
-print(f'shape {shape}')
-h = shape[0]
-w = shape[1]
-c = shape[2]
-r0 = 0.1
-r1 = 0.45
-c_y = tf.cast(h, tf.float32) / 2
-c_x = tf.cast(w, tf.float32) / 2
-print(f'cx={c_x}, cy={c_y}')
-r_max = tf.math.sqrt(c_x ** 2 + c_y ** 2)
-print(f'r {r_max}')
-r0 = tf.round(r0 * r_max)
-r1 = tf.round(r1 * r_max)
-print(f'r0={r0}  r1={r1}')
-x = tf.range(r0, r1, delta=1.0, dtype=tf.float32)
-y = tf.zeros_like(x)
-coord = tf.stack([x, y])
 
-# angle according to midpoint circle algorithm
-theta = tf.math.atan2(1, tf.math.sqrt(r1 ** 2 - 1))
-# print(theta)
-# print(np.pi/4)
-theta_len = 2 * np.pi / theta
-q_len = theta_len / 8
-theta_len = tf.cast(tf.round(theta_len), tf.int32)
-r_len = tf.shape(x)[0]
-res = np.zeros((r_len, theta_len, c), dtype=np.float32)
-print(res.shape)
+def rad_crop(tensor, r1: float, r2: float):
+    assert(0.0 <= r1 and r1 < r2 and r2 <= 1.0)
+    img_shape = tf.shape(tensor)
+    h = img_shape[0]
+    w = img_shape[1]
+    c_x = tf.cast(w, tf.float32) / 2
+    c_y = tf.cast(h, tf.float32) / 2
+    x = tf.range(w, dtype=tf.float32)
+    x = tf.reshape(x, (1, w)) + tf.zeros(shape=(h, w))
+    y = tf.range(h, dtype=tf.float32)
+    y = tf.reshape(y, (h, 1)) + tf.zeros(shape=(h, w))
+    x -= c_x
+    y -= c_y
+    r = tf.math.sqrt(x ** 2 + y ** 2)
+    r_max = tf.sqrt(c_x ** 2 + c_y ** 2)
+    r /= r_max
+    cond = tf.math.logical_and(r <= r2, r > r1)
+    cond = tf.expand_dims(cond, axis=2)
+    x = tf.where(cond, tensor, [0.0, 0.0, 0.0])
+    return x
 
-img = tf.transpose(img, (1, 0, 2))
 
-for i in range(theta_len):
-    alpha = i * theta
-    print(f'angle={alpha}')
-    rot_mat = [[tf.cos(alpha), -tf.sin(alpha)],
-               [tf.sin(alpha), tf.cos(alpha)]]
+def select_ring(tensor, r0: float, r1: float):
+    assert(0.0 <= r0 and r0 < r1 and r1 <= 1.0)
+    shape = tf.shape(tensor)
+    print(f'shape {shape}')
+    h = shape[0]
+    w = shape[1]
+    c = shape[2]
+    c_y = tf.cast(h, tf.float32) / 2
+    c_x = tf.cast(w, tf.float32) / 2
+    print(f'cx={c_x}, cy={c_y}')
+    r_max = tf.math.sqrt(c_x ** 2 + c_y ** 2)
+    print(f'r {r_max}')
+    r0 = tf.round(r0 * r_max)
+    r1 = tf.round(r1 * r_max)
+    print(f'r0={r0}  r1={r1}')
+    x = tf.range(r0, r1, delta=1.0, dtype=tf.float32)
+    y = tf.zeros_like(x)
+    coord = tf.stack([y, x])
+
+    # pad with zeros
+    if r1 > c_y or r1 > c_x:
+        pad_h = r_max - c_y + 1
+        pad_w = r_max - c_x + 1
+        c_y += pad_h
+        c_x += pad_w
+        pad_h = tf.cast(tf.round(pad_h), dtype=tf.int32)
+        pad_w = tf.cast(tf.round(pad_w), dtype=tf.int32)
+        tensor = tf.pad(tensor, ((pad_h, pad_h), (pad_w, pad_w), (0, 0)))
+
+    # angle according to midpoint circle algorithm
+    theta = tf.math.atan2(1, tf.math.sqrt(r1 ** 2 - 1))
+    print(f'theta={theta}')
+    theta = tf.range(0, 2 * np.pi, theta, dtype=tf.float32)
+    cos_theta = tf.cos(theta)
+    sin_theta = tf.sin(theta)
+    rot_mat = tf.stack(
+        [tf.stack([cos_theta, sin_theta], axis=1),
+         tf.stack([-sin_theta, cos_theta], axis=1)],
+        axis=1
+    )
+
     updated_coord = tf.matmul(rot_mat, coord)
+    updated_coord = tf.transpose(updated_coord, (0, 2, 1))
+    updated_coord = tf.reshape(updated_coord, (-1, 2))
+    updated_coord += [c_y, c_x]
     updated_coord = tf.round(updated_coord)
     updated_coord = tf.cast(updated_coord, tf.int32)
-    updated_coord = tf.transpose(updated_coord, (1, 0))
-    # print(updated_coord)
-    updated_coord += [c_x, c_y]
-    res[:, i, :] = tf.gather_nd(img, updated_coord)
-    print(i)
 
-# print(updated_coord[:, :10])
+    res = tf.gather_nd(tensor, updated_coord)
+    res = tf.reshape(res, (tf.shape(theta)[0], -1, c))
+    res = tf.transpose(res, (1, 0, 2))
+    print(res.shape)
 
-Image.fromarray(np.uint8(res)).save('tmp.png')
+    return res
+
+
+def inv_ring_warp(tensor, r0: float, r1: float):
+    assert(0.0 <= r0 and r0 < r1 and r1 <= 1.0)
+    shape = tf.shape(tensor)
+    print(f'shape {shape}')
+    r_len = shape[0]
+    theta_len = shape[1]
+    c = shape[2]
+
+    r_max = tf.cast(r_len, tf.float32) / (r1 - r0)
+    r0 = tf.round(r0 * r_max)
+    r1 = r0 + tf.cast(r_len, tf.float32)
+    print(f'r {r_max}')
+    print(f'r0={r0}  r1={r1}')
+
+    pad_0 = tf.cast(r0, tf.int32)
+    diag = np.sqrt(2) * r1
+    pad_1 = tf.cast(diag - r1 + 1, tf.int32)
+    tensor = tf.pad(tensor, ((pad_0, pad_1), (0, 0), (0, 0)))
+    print(f'tshape {tensor.shape}')
+
+    x = tf.range(r1-1, -r1, -1.0, dtype=tf.float32)
+    y = tf.range(r1-1, -r1, -1.0, dtype=tf.float32)
+    h = w = tf.shape(x)[0]
+    x = tf.reshape(x, (1, w))
+    y = tf.reshape(y, (h, 1))
+    r = tf.math.sqrt(x ** 2 + y ** 2)
+    print(f'r_shape {r.shape}')
+    theta = tf.math.atan2(y, x) + np.pi
+    theta_one = 2 * np.pi / tf.cast(theta_len, tf.float32)
+    theta /= theta_one
+    theta -= 1.0 # ????
+    r = tf.reshape(r, (h * w))
+    print('r max', tf.reduce_max(r), 'r min', tf.reduce_min(r))
+    theta = tf.reshape(theta, (h * w))
+    print('theta max', tf.reduce_max(theta), 'theta min', tf.reduce_min(theta))
+
+    coord = tf.stack([r, theta], axis=1)
+    print(f'coord {coord.shape}')
+    coord = tf.round(coord)
+    coord = tf.cast(coord, tf.int32)
+
+    res = tf.gather_nd(tensor, coord)
+    res = tf.reshape(res, (h, w, c))
+
+    return res
+
+
+
+# x = rad_crop(img, 0.5, 0.6)
+# Image.fromarray(np.uint8(x)).save('tmp_res.png')
+
+r0 = 0.1
+r1 = 0.9
+x = select_ring(img, r0, r1)
+Image.fromarray(np.uint8(x)).save('tmp_ring.png')
+
+# y = inv_ring_warp(x, r0, r1)
+# Image.fromarray(np.uint8(y)).save('tmp_ring_inv.png')
