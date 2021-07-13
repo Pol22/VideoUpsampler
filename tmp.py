@@ -3,9 +3,11 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 from PIL import Image
 import numpy as np
 import tensorflow as tf
+import cv2
 
 # img = Image.open('tmp_img.png')
-img = Image.open('a2345-_DSC0114_0.png')
+img = Image.open('frames/95.png')
+# img = Image.open('a2345-_DSC0114_0.png')
 # img = Image.open('a2972-_DSC6416_0.png')
 img = np.asarray(img, dtype=np.float32)
 
@@ -139,10 +141,24 @@ def inv_ring_warp(tensor, r0: float, r1: float):
 # x = rad_crop(img, 0.5, 0.6)
 # Image.fromarray(np.uint8(x)).save('tmp_res.png')
 
-r0 = 0.1
-r1 = 0.9
+r0 = 0.0
+r1 = 1.0
 x = select_ring(img, r0, r1)
+print(x.shape)
 Image.fromarray(np.uint8(x)).save('tmp_ring.png')
+h, w, c = img.shape
+y_c = h // 2
+x_c = w // 2
+print(y_c, x_c)
+max_r = np.sqrt(x_c ** 2 + y_c ** 2)
+
+img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+x = cv2.warpPolar(img, (1101, 6227), (y_c, x_c), max_r, 
+    cv2.INTER_LINEAR + cv2.WARP_FILL_OUTLIERS + cv2.WARP_POLAR_LINEAR)
+x = cv2.rotate(x, cv2.ROTATE_90_CLOCKWISE)
+x = cv2.flip(x, 1)
+Image.fromarray(np.uint8(x)).save('tmp_ring1.png')
 
 # y = inv_ring_warp(x, r0, r1)
 # Image.fromarray(np.uint8(y)).save('tmp_ring_inv.png')
