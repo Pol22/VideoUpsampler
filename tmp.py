@@ -6,8 +6,8 @@ import tensorflow as tf
 import cv2
 
 # img = Image.open('tmp_img.png')
-img = Image.open('frames/95.png')
-# img = Image.open('a2345-_DSC0114_0.png')
+# img = Image.open('frames/95.png')
+img = Image.open('a2345-_DSC0114_0.png')
 # img = Image.open('a2972-_DSC6416_0.png')
 img = np.asarray(img, dtype=np.float32)
 
@@ -137,27 +137,62 @@ def inv_ring_warp(tensor, r0: float, r1: float):
     return res
 
 
+def warp_ring(tensor, r0: float, r1: float):
+    assert(0.0 <= r0 and r0 < r1 and r1 <= 1.0)
+    shape = tf.shape(tensor)
+    print(f'shape {shape}')
+    h = shape[0]
+    w = shape[1]
+    c = shape[2]
+    c_y = tf.cast(h, tf.float32) / 2
+    c_x = tf.cast(w, tf.float32) / 2
+    print(f'cx={c_x}, cy={c_y}')
+    r_max = tf.math.sqrt(c_x ** 2 + c_y ** 2)
+    print(f'r {r_max}')
+    r0 = tf.round(r0 * r_max)
+    r1 = tf.round(r1 * r_max)
 
-# x = rad_crop(img, 0.5, 0.6)
-# Image.fromarray(np.uint8(x)).save('tmp_res.png')
+    # angle according to midpoint circle algorithm
+    angle = tf.math.atan2(1, tf.math.sqrt(r_max ** 2 - 1))
+    angle_len = tf.cast(tf.round(2 * np.pi / angle), tf.int32)
+    r_len = tf.cast(tf.round(r_max), tf.int32)
+
+    flags = cv2.INTER_LINEAR + cv2.WARP_FILL_OUTLIERS + cv2.WARP_POLAR_LINEAR
+    dsize = tf.stack([r_len, angle_len])
+    center = tf.stack([c_x, c_y])
+
+    # print([tensor, dsize, center, r_max, flags])
+    # print(dsize.numpy())
+    def warper(tensor, dsize, center, r_max, flags):
+        dsize = tuple(dsize)
+        center = tuple(center)
+        res = cv2.warpPolar(tensor, dsize, center, r_max, flags)
+        # TODO remove
+        # res = cv2.rotate(res, cv2.ROTATE_90_CLOCKWISE)
+        # res = cv2.flip(res, 1)
+        return res
+    
+    # res = cv2.warpPolar(tensor.numpy(), np.array(dsize), center, r_max, flags)
+    res = tf.numpy_function(
+        warper,
+        [tensor, dsize, center, r_max, flags],
+        tf.float32
+    )
+    print(tf.shape(res))
+
+    return res
+
+
 
 r0 = 0.0
 r1 = 1.0
 x = select_ring(img, r0, r1)
-print(x.shape)
 Image.fromarray(np.uint8(x)).save('tmp_ring.png')
-h, w, c = img.shape
-y_c = h // 2
-x_c = w // 2
-print(y_c, x_c)
-max_r = np.sqrt(x_c ** 2 + y_c ** 2)
 
-img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-x = cv2.warpPolar(img, (1101, 6227), (y_c, x_c), max_r, 
-    cv2.INTER_LINEAR + cv2.WARP_FILL_OUTLIERS + cv2.WARP_POLAR_LINEAR)
-x = cv2.rotate(x, cv2.ROTATE_90_CLOCKWISE)
-x = cv2.flip(x, 1)
+img = tf.convert_to_tensor(img, dtype=tf.float32)
+x = warp_ring(img, r0, r1)
+
 Image.fromarray(np.uint8(x)).save('tmp_ring1.png')
 
 # y = inv_ring_warp(x, r0, r1)
