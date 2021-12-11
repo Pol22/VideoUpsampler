@@ -18,7 +18,7 @@ def train():
 
     epochs = 100
     lr = 1e-4
-    out_dir = 'results'
+    out_dir = 'results1'
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
@@ -31,7 +31,6 @@ def train():
         scale,
         repeat_count
     )
-    
 
     valid_dataset = get_dataset(
         valid_folder,

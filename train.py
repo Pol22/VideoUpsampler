@@ -1,4 +1,3 @@
-import torch.backends.cudnn as cudnn
 import torch
 from math import log10
 from tqdm import tqdm
@@ -26,9 +25,6 @@ print_freq = 10  # print training status once every __ batches
 lr = 1e-4  # learning rate
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f'Device: {device}')
-
-cudnn.benchmark = True
 
 
 def main():
@@ -53,7 +49,7 @@ def main():
 
     # Move to default device
     model = model.to(device)
-    criterion = nn.MSELoss().to(device)
+    criterion = nn.L1Loss().to(device)
 
     # Custom dataloaders
     train_loader = torch.utils.data.DataLoader(
@@ -95,11 +91,12 @@ def main():
         torch.save({'epoch': epoch,
                     'model': model,
                     'optimizer': optimizer},
-                    'checkpoint_unet.pth.tar')
+                    f'checkpoints/checkpoint_unet_{epoch}.pth.tar')
 
 
 def train(train_loader, model, criterion, optimizer, epoch, epochs):
     model.train()
+    mse = nn.MSELoss().to(device)
 
     losses = AverageMeter()
     psnrs = AverageMeter()
@@ -124,14 +121,16 @@ def train(train_loader, model, criterion, optimizer, epoch, epochs):
 
         # Keep track of loss
         losses.update(loss.item())
-        psnr = 10 * log10(1 / loss.item())
+        psnr = 10 * log10(1 / mse(sr_imgs, hr_imgs).item())
         psnrs.update(psnr)
 
-        pbar.set_postfix_str(f'MSE {losses.val:.6f} PSNR {psnrs.val:.2f}')
+        pbar.set_postfix_str(f'L1 {losses.val:.6f} PSNR {psnrs.val:.2f}')
         pbar.update(1)
 
 
 def test(test_loader, model, criterion):
+    mse = nn.MSELoss().to(device)
+
     psnrs = AverageMeter()
     losses = AverageMeter()
 
@@ -146,10 +145,10 @@ def test(test_loader, model, criterion):
 
             # Keep track of loss
             losses.update(loss.item())
-            psnr = 10 * log10(1 / loss.item())
+            psnr = 10 * log10(1 / mse(sr_imgs, hr_imgs).item())
             psnrs.update(psnr)
 
-            pbar.set_postfix_str(f'MSE {losses.val:.6f} PSNR {psnrs.val:.2f}')
+            pbar.set_postfix_str(f'L1 {losses.val:.6f} PSNR {psnrs.val:.2f}')
             pbar.update(1)
 
 

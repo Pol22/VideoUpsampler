@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 
 def warp_flow(img, flow):
@@ -28,7 +29,7 @@ prev_gray = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
 frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 nxt = None
 flow = None
-for i in range(2, 1000):
+for i in tqdm(range(2, int(frames))):
     # Capture frame-by-frame
     _, nxt = cap.read()
     _, res_frame = res_cap.read()

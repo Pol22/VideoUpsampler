@@ -6,7 +6,7 @@ from random import sample
 def main():
     data_folder = 'frames'
     save_folder = 'test_data'
-    split = 0.1
+    split = 0.15
 
     if not os.path.exists(save_folder):
         os.mkdir(save_folder)

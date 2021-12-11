@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import tensorflow as tf
+from tqdm import tqdm
 
 
 def warp_flow(img, flow):
@@ -11,7 +12,8 @@ def warp_flow(img, flow):
     res = cv2.remap(img, flow, None, cv2.INTER_LINEAR)
     return res
 
-file_name = 'out.mp4'
+# file_name = 'out.mp4'
+file_name = 'Jeremy Clarkson\'s Motorworld - S01E01 Japan BdT.mp4'
 cap = cv2.VideoCapture(file_name)
 fps = cap.get(cv2.CAP_PROP_FPS)
 frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -23,7 +25,7 @@ print(f'height {height}')
 print(f'width {width}')
 
 scale = 2
-div = 8
+div = 4
 in_c = 9
 
 res_name = file_name.split('.')[0] + '_upsample.mp4'
@@ -42,10 +44,13 @@ frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 nxt = None
 flow = None
 
-model = tf.keras.models.load_model(
-    'results/resunet_040-35.03.h5', compile=False)
+prev_scaled = cv2.resize(prev, (0,0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+res_writer.write(prev_scaled)
 
-for i in range(2, 100):
+model = tf.keras.models.load_model(
+    'results1/resunet_041-35.37.h5', compile=False)
+
+for i in tqdm(range(2, int(frames))):
     # Capture frame-by-frame
     _, nxt = cap.read()
 
@@ -77,6 +82,8 @@ for i in range(2, 100):
     frame = nxt
     frame_gray = nxt_gray
 
+frame_scaled = cv2.resize(frame, (0,0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+res_writer.write(frame_scaled)
 
 # When everything done, release the video capture object
 cap.release()

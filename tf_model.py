@@ -16,8 +16,11 @@ def ResBlock(inputs, filters, kernel_size=3):
 
 def ResUNet(in_channels, out_channels=3, kernel_size=3):
     inputs = tf.keras.Input(shape=(None, None, in_channels))
+    
+    x = tf.keras.layers.UpSampling2D(interpolation='bilinear')(inputs)
+    x = Conv(x, 32, kernel_size)
 
-    x = Conv(inputs, 32, kernel_size)
+    # x = Conv(inputs, 32, kernel_size)
     x1 = ResBlock(x, 32, kernel_size)
     x = tf.nn.space_to_depth(x1, 2)
     x = Conv(x, 64, kernel_size)
@@ -40,10 +43,12 @@ def ResUNet(in_channels, out_channels=3, kernel_size=3):
     x = tf.nn.depth_to_space(x, 2)
     x = x + x1
     x = ResBlock(x, 32, kernel_size)
+
     # upsample from input size
-    x = Conv(x, 16 * 2 * 2, kernel_size)
-    x = tf.nn.depth_to_space(x, 2)
-    x = ResBlock(x, 16, kernel_size)
+    # x = Conv(x, 16 * 2 * 2, kernel_size)
+    # x = tf.nn.depth_to_space(x, 2)
+    # x = ResBlock(x, 16, kernel_size)
+
     out = tf.keras.layers.Conv2D(
         out_channels, 1, strides=1, padding='same', activation='sigmoid')(x)
     return tf.keras.Model(inputs=inputs, outputs=out)
