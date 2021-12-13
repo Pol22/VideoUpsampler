@@ -108,5 +108,6 @@ def main():
     cap.release()
     res_writer.release()
 
+
 if __name__ == '__main__':
     main()
