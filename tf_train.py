@@ -1,4 +1,5 @@
 import os
+import argparse
 import tensorflow as tf
 
 from tf_model import ResUNet
@@ -7,6 +8,10 @@ from metrics import PSNR, SSIM
 
 
 def train():
+    parser = argparse.ArgumentParser(description='Trainer')
+    parser.add_argument('--model', help='H5 TF upsample model', default=None)
+    args = parser.parse_args()
+
     train_folder = './frames'
     valid_folder = './test_data'
     crop_size = 128
@@ -18,11 +23,17 @@ def train():
 
     epochs = 100
     lr = 1e-4
-    out_dir = 'results1'
+    out_dir = 'results'
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
-    model = ResUNet(in_channels, out_channels)
+    if args.model is not None:
+        model = tf.keras.models.load_model(args.model, compile=False)
+        model.summary()
+        print('Model loaded')
+    else:
+        model = ResUNet(in_channels, out_channels)
+        print('New model created')
 
     train_dataset = get_dataset(
         train_folder,
