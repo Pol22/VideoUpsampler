@@ -23,7 +23,9 @@ def copy_audio(in_file, out_file):
     output_video = ffmpeg.input(out_file)
     audio = input_video.audio
     video = output_video.video
-    ffmpeg.output(audio, video, out_file)
+    res = ''.join(out_file.split('.')[:-1]) + '_audio.mp4'
+    stream = ffmpeg.output(audio, video, res, vcodec='copy', acodec='copy')
+    ffmpeg.run(stream)
 
 
 def main():
