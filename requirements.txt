@@ -1,8 +1,10 @@
-Cython==0.29.24
-opencv_python==4.5.1.48
 torch==1.8.1
-tqdm==4.62.3
+ffmpeg_python==0.2.0
 numpy==1.19.5
-torchvision==0.9.1
+Cython==0.29.24
+tqdm==4.62.3
+opencv_python==4.5.1.48
 tensorflow==2.5.0
+torchvision==0.9.1
+ffmpeg==1.4
 Pillow==8.4.0

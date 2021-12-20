@@ -52,3 +52,16 @@ def ResUNet(in_channels, out_channels=3, kernel_size=3):
     out = tf.keras.layers.Conv2D(
         out_channels, 1, strides=1, padding='same', activation='sigmoid')(x)
     return tf.keras.Model(inputs=inputs, outputs=out)
+
+
+def ResizeWrapper(model, in_size, out_size):
+    h, w = in_size
+
+    inputs = tf.keras.Input(shape=model.input.shape[1:])
+
+    x = model(inputs)
+    x = x[0, :h, :w, :]
+    x = tf.image.resize(x, out_size, method='bicubic', antialias=True)
+    x = tf.cast(x * 255.0, dtype=tf.uint8)
+
+    return tf.keras.Model(inputs=inputs, outputs=x)

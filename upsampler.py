@@ -1,9 +1,12 @@
 import cv2
 import argparse
+import ffmpeg
 import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
 from pathlib import Path
+
+from tf_model import ResizeWrapper
 
 
 def warp_flow(img, flow):
@@ -15,10 +18,25 @@ def warp_flow(img, flow):
     return res
 
 
+def copy_audio(in_file, out_file):
+    input_video = ffmpeg.input(in_file)
+    output_video = ffmpeg.input(out_file)
+    audio = input_video.audio
+    video = output_video.video
+    ffmpeg.output(audio, video, out_file)
+
+
 def main():
+    # Required settings
+    scale = 2
+    divisor = 4
+    in_channels = 9
+
     parser = argparse.ArgumentParser(description='MP4 Upsampler')
     parser.add_argument('--file', help='MP4 Video file', required=True)
     parser.add_argument('--model', help='H5 TF upsample model', required=True)
+    parser.add_argument('--format', help='Result video format', type=int,
+                        default=1080)
     args = parser.parse_args()
 
     cap = cv2.VideoCapture(args.file)
@@ -26,26 +44,24 @@ def main():
     frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    res_height = args.format
+    res_width = int(width * scale * height * scale / res_height)
 
     print(f'FPS {fps}')
     print(f'Count of frames {frames}')
-    print(f'Original size {height}x{width}')
-
-    # Required settings
-    scale = 2
-    divisor = 4
-    in_channels = 9
+    print(f'Original size {width}x{height}')
+    print(f'Result size {res_width}x{res_height}')
 
     file_path = Path(args.file)
     file_name = file_path.name
     res_name = file_name.split('.')
     res_name[-1] = '_upsampled.mp4'
     res_name = ''.join(res_name)
-    res_path = file_path.parent / res_name
+    res_path = str(file_path.parent / res_name)
 
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     res_writer = cv2.VideoWriter(
-        str(res_path), fourcc, fps, (width * scale, height * scale))
+        res_path, fourcc, fps, (res_width, res_height))
 
     inst = cv2.DISOpticalFlow.create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
     inst.setUseSpatialPropagation(False)
@@ -59,10 +75,12 @@ def main():
 
     # Write first frame
     prev_scaled = cv2.resize(
-        prev, (0,0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        prev, (res_width, res_height), interpolation=cv2.INTER_CUBIC)
     res_writer.write(prev_scaled)
 
     model = tf.keras.models.load_model(args.model, compile=False)
+    model = ResizeWrapper(
+        model, (height * scale, width * scale), (res_height, res_width))
 
     for _ in tqdm(range(2, frames)):
         _, nxt = cap.read()
@@ -89,9 +107,6 @@ def main():
         inputs = inputs / 255.0
         
         pred = model.predict(inputs)
-        # Select required shape
-        pred = np.uint8(pred[0, :height * scale, :width * scale, :] * 255.0)
-
         res_writer.write(pred)
 
         prev = frame
@@ -101,12 +116,14 @@ def main():
 
     # Write last frame
     frame_scaled = cv2.resize(
-        frame, (0,0), fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        frame, (res_width, res_height), interpolation=cv2.INTER_CUBIC)
     res_writer.write(frame_scaled)
 
     # When everything done, release the video capture object
     cap.release()
     res_writer.release()
+
+    copy_audio(args.file, res_path)
 
 
 if __name__ == '__main__':
