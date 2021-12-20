@@ -30,8 +30,9 @@ def main():
     res_cap = cv2.VideoCapture(args.hr_video)
     fps = cap.get(cv2.CAP_PROP_FPS)
     frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    res_frames = int(res_cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print(f'FPS {fps}')
-    print(f'frames {frames}')
+    print(f'Frames LR {frames}, HR {res_frames}')
 
     inst = cv2.DISOpticalFlow.create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
     inst.setUseSpatialPropagation(False)
