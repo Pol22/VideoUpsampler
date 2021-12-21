@@ -1,6 +1,16 @@
 # VideoUpsampler
 
 ## MP4 video upsampler
+### Video
+Paired video with lower resolution was used for training
+
+Using `ffmpeg` can be generated downsampled video
+
+##### Example from 1080p with x2 downsampled scale:
+```console
+ffmpeg -i input/mp4/video -s 960x540 -crf 30 output/mp4/video
+```
+
 ### Model
 Model based on UNet architecture (more in `tf_model.py`)
 
@@ -13,6 +23,8 @@ Trained on MP4 encoded videos with lower resolution
 foo@bar:~/VideoUpsampler$ python upsampler.py --file path/to/mp4/file --model path/to/model 
 ```
 New video will be saved near original file with `_upsampled` suffix
+
+Also suffix `_audio` will be added for video with copied audio
 
 ### YouTube example
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=
