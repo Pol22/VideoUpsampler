@@ -47,7 +47,7 @@ def main():
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     res_height = args.format
-    res_width = int(width * scale * height * scale / res_height)
+    res_width = int(width * res_height / height)
 
     print(f'FPS {fps}')
     print(f'Count of frames {frames}')
