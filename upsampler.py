@@ -30,13 +30,13 @@ def copy_audio(in_file, out_file):
 
 def main():
     # Required settings
-    scale = 2
-    divisor = 4
-    in_channels = 9
+    divisor = 8 # based on downsample layers on model
+    in_channels = 9 # [previous, frame, next] * 3
 
     parser = argparse.ArgumentParser(description='MP4 Upsampler')
     parser.add_argument('--file', help='MP4 Video file', required=True)
     parser.add_argument('--model', help='H5 TF upsample model', required=True)
+    parser.add_argument('--scale', help='Model scale', type=int, default=2)
     parser.add_argument('--format', help='Result video format', type=int,
                         default=1080)
     args = parser.parse_args()
@@ -80,12 +80,18 @@ def main():
         prev, (res_width, res_height), interpolation=cv2.INTER_CUBIC)
     res_writer.write(prev_scaled)
 
+    scale = args.scale
     model = tf.keras.models.load_model(args.model, compile=False)
     model = ResizeWrapper(
         model, (height * scale, width * scale), (res_height, res_width))
 
-    for _ in tqdm(range(2, frames)):
+    for i in tqdm(range(2, frames)):
         _, nxt = cap.read()
+
+        if i < 6000:
+            continue
+        if i > 7500:
+            break
 
         nxt_gray = cv2.cvtColor(nxt, cv2.COLOR_BGR2GRAY)
 

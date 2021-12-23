@@ -8,7 +8,7 @@ Using `ffmpeg` can be generated downsampled video
 
 ##### Example from 1080p with x2 downsampled scale:
 ```console
-ffmpeg -i input/mp4/video -s 960x540 -crf 30 output/mp4/video
+ffmpeg -i input/mp4/video -s 960x540 -crf 30 -vsync vfr output/mp4/video
 ```
 
 ### Model
@@ -16,7 +16,7 @@ Model based on UNet architecture (more in `tf_model.py`)
 
 Trained on MP4 encoded videos with lower resolution
 
-[Pretrained TF model](https://drive.google.com/file/d/1NlSXLaTOdkk41eQEy10R3Bag0WxsTqnq/view?usp=sharing)
+[Pretrained x2 TF model](https://drive.google.com/file/d/1NlSXLaTOdkk41eQEy10R3Bag0WxsTqnq/view?usp=sharing)
 
 ### Usage
 ```console

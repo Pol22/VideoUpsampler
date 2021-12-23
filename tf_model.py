@@ -14,10 +14,11 @@ def ResBlock(inputs, filters, kernel_size=3):
     return x + inputs
 
 
-def ResUNet(in_channels, out_channels=3, kernel_size=3):
+def ResUNet(scale, in_channels, out_channels=3, kernel_size=3):
     inputs = tf.keras.Input(shape=(None, None, in_channels))
     
-    x = tf.keras.layers.UpSampling2D(interpolation='bilinear')(inputs)
+    x = tf.keras.layers.UpSampling2D(
+        size=(scale, scale), interpolation='bilinear')(inputs)
     x = Conv(x, 32, kernel_size)
 
     # x = Conv(inputs, 32, kernel_size)

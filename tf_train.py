@@ -10,12 +10,13 @@ from metrics import PSNR, SSIM
 def train():
     parser = argparse.ArgumentParser(description='Trainer')
     parser.add_argument('--model', help='H5 TF upsample model', default=None)
+    parser.add_argument('--scale', help='Model scale', default=2, type=int)
     args = parser.parse_args()
 
+    scale = args.scale
     train_folder = './frames'
     valid_folder = './test_data'
-    crop_size = 128
-    scale = 2
+    crop_size = 96
     repeat_count = 1
     batch_size = 16
     in_channels = 9
@@ -32,7 +33,7 @@ def train():
         model.summary()
         print('Model loaded')
     else:
-        model = ResUNet(in_channels, out_channels)
+        model = ResUNet(scale, in_channels, out_channels)
         print('New model created')
 
     train_dataset = get_dataset(
