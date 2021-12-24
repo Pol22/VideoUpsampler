@@ -28,25 +28,16 @@ def copy_audio(in_file, out_file):
     ffmpeg.run(stream)
 
 
-def main():
+def upsample(file_path, model, scale, res_height):
     # Required settings
     divisor = 8 # based on downsample layers on model
     in_channels = 9 # [previous, frame, next] * 3
 
-    parser = argparse.ArgumentParser(description='MP4 Upsampler')
-    parser.add_argument('--file', help='MP4 Video file', required=True)
-    parser.add_argument('--model', help='H5 TF upsample model', required=True)
-    parser.add_argument('--scale', help='Model scale', type=int, default=2)
-    parser.add_argument('--format', help='Result video format', type=int,
-                        default=1080)
-    args = parser.parse_args()
-
-    cap = cv2.VideoCapture(args.file)
+    cap = cv2.VideoCapture(file_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    res_height = args.format
     res_width = int(width * res_height / height)
 
     print(f'FPS {fps}')
@@ -54,7 +45,7 @@ def main():
     print(f'Original size {width}x{height}')
     print(f'Result size {res_width}x{res_height}')
 
-    file_path = Path(args.file)
+    file_path = Path(file_path)
     file_name = file_path.name
     res_name = file_name.split('.')
     res_name[-1] = '_upsampled.mp4'
@@ -80,18 +71,12 @@ def main():
         prev, (res_width, res_height), interpolation=cv2.INTER_CUBIC)
     res_writer.write(prev_scaled)
 
-    scale = args.scale
-    model = tf.keras.models.load_model(args.model, compile=False)
+    model = tf.keras.models.load_model(model, compile=False)
     model = ResizeWrapper(
         model, (height * scale, width * scale), (res_height, res_width))
 
-    for i in tqdm(range(2, frames)):
+    for _ in tqdm(range(2, frames)):
         _, nxt = cap.read()
-
-        if i < 6000:
-            continue
-        if i > 7500:
-            break
 
         nxt_gray = cv2.cvtColor(nxt, cv2.COLOR_BGR2GRAY)
 
@@ -131,7 +116,19 @@ def main():
     cap.release()
     res_writer.release()
 
-    copy_audio(args.file, res_path)
+    copy_audio(file_path, res_path)
+
+
+def main():
+    parser = argparse.ArgumentParser(description='MP4 Upsampler')
+    parser.add_argument('--file', help='MP4 Video file', required=True)
+    parser.add_argument('--model', help='H5 TF upsample model', required=True)
+    parser.add_argument('--scale', help='Model scale', type=int, default=2)
+    parser.add_argument('--format', help='Result video format', type=int,
+                        default=1080)
+    args = parser.parse_args()
+
+    upsample(args.file, args.model, args.scale, args.format)
 
 
 if __name__ == '__main__':

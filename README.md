@@ -16,7 +16,9 @@ Model based on UNet architecture (more in `tf_model.py`)
 
 Trained on MP4 encoded videos with lower resolution
 
-[Pretrained x2 TF model](https://drive.google.com/file/d/1NlSXLaTOdkk41eQEy10R3Bag0WxsTqnq/view?usp=sharing)
+[Pretrained x2 TF model](https://drive.google.com/file/d/1KL2rd3fCS7ww7ZB9SDeNSwwM3r892D4D/view?usp=sharing)
+
+[Pretrained x3 TF model](https://drive.google.com/file/d/1mNWbdPpVQf8B7czeGIDCZ7-dxQIIwa-o/view?usp=sharing)
 
 ### Usage
 ```console
