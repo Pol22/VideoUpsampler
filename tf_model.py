@@ -1,3 +1,4 @@
+from configparser import Interpolation
 import tensorflow as tf
 
 
@@ -62,7 +63,12 @@ def ResizeWrapper(model, in_size, out_size):
 
     x = model(inputs)
     x = x[0, :h, :w, :]
-    x = tf.image.resize(x, out_size, method='bicubic', antialias=True)
+
+    x = tf.keras.layers.Resizing(
+        out_size[0],
+        out_size[1],
+        interpolation='bicubic',
+        crop_to_aspect_ratio=False)(x)
     x = tf.cast(x * 255.0, dtype=tf.uint8)
 
     return tf.keras.Model(inputs=inputs, outputs=x)
